@@ -7,25 +7,20 @@ import random
 import os
 from dotenv import load_dotenv
 
-# Load environment variables (for Archcraft local testing)
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
-# Setup intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="+", intents=intents)
 
-# Storage for /revive
 offer_dashboard = {}
 offer_counter = 1
 
-# --- BACKGROUND TASK: Live Status ---
 @tasks.loop(minutes=10)
 async def change_status():
-    # Dynamic population count
     people = random.randint(8350, 8420) 
     await bot.change_presence(activity=discord.Game(name=f"Serving {people} people"))
 
@@ -36,13 +31,9 @@ async def on_ready():
         change_status.start()
     print(f"✅ Manager Cluster is live for Jamim.")
 
-# --- HELPER: Emoji Fetcher ---
 def get_emoji(name):
-    # Searches your server for the emoji by name
     emoji = discord.utils.get(bot.emojis, name=name)
     return str(emoji) if emoji else f":{name}:"
-
-# --- SLASH COMMANDS ---
 
 @bot.tree.command(name="ofc", description="Create a new shop offer")
 @app_commands.describe(name="Service (e.g. Crunchyroll)", price="Price", duration="Duration", expiry_time="Time (1h, 2d, 30m)")
@@ -52,7 +43,6 @@ async def ofc(interaction: discord.Interaction, name: str, price: str, duration:
     offer_id = str(offer_counter).zfill(2)
     offer_counter += 1
 
-    # Time Parsing
     seconds = 0
     unit = expiry_time[-1].lower()
     try:
@@ -68,7 +58,6 @@ async def ofc(interaction: discord.Interaction, name: str, price: str, duration:
     countdown_text = f"⌛ Offer available for: <t:{future_unix}:R>"
     ticket_link = "https://discord.com/channels/1375331809365327933/1393990894797193256"
 
-    # Modern Text UI
     offer_content = (
         f"# {name} Offer {get_emoji('crunchyroll')}\n"
         f"-# Offer No: {offer_id}\n"
@@ -82,13 +71,10 @@ async def ofc(interaction: discord.Interaction, name: str, price: str, duration:
     await interaction.response.send_message("✨ Dispatching Offer...", ephemeral=True)
     msg = await interaction.channel.send(offer_content)
     
-    # Save to "Dashboard"
     offer_dashboard[offer_id] = offer_content
 
-    # Expiration Logic (The "Cutting" effect)
     if seconds > 0:
         await asyncio.sleep(seconds)
-        # Apply strikethrough to the service line
         expired_line = f"~~{duration} {name} = {price}~~"
         
         expired_content = (
@@ -109,8 +95,6 @@ async def revive(interaction: discord.Interaction, offer_no: str):
         await interaction.channel.send(offer_dashboard[oid])
     else:
         await interaction.response.send_message("❌ ID not found in current session.", ephemeral=True)
-
-# --- PREFIX MODERATION (No DM / No Reason) ---
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
